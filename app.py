@@ -1,18 +1,92 @@
 
-from flask import Flask
-import requests
-from requests_oauthlib import OAuth1Session 
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
+from requests_oauthlib import OAuth1Session
 from dotenv import load_dotenv
 import os
-import json
+import re
+
 
 load_dotenv()
+login_manager = LoginManager()
 
 app = Flask(__name__)
+login_manager.init_app(app)
+app.secret_key = os.environ.get("APP_SECRET")
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+db = SQLAlchemy(app)
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
+class User(db.Model, UserMixin):
+    id = db.Column(db.String(80), primary_key=True)
+    password = db.Column(db.String(120))
+
+with app.app_context():
+    db.create_all()
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(user_id)
+
+@app.route('/protected')
+@login_required
+def protected():
+    return jsonify(message='This is a protected route')
+
+@app.route('/reset_db', methods=['POST'])
+def reset_db():
+    db.drop_all()
+    db.create_all()
+    return jsonify({"message": "Database reset successfully"}), 200
+
+def validate_password(password):
+    if len(password) < 8:
+        return False
+    if not re.search("[a-z]", password):
+        return False
+    if not re.search("[A-Z]", password):
+        return False
+    if not re.search("[0-9]", password):
+        return False
+    return True
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON data"}), 400
+    username = data.get('username')
+    password = data.get('password')
+    if not validate_password(password):
+        return jsonify({"error": "Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, and one digit"}), 400
+    if not username or not password:
+        return jsonify({"error": "Missing username or password"}), 400
+    if User.session.get(username):
+        return jsonify({"error": "User already exists"}), 400
+    user = User(id=username, password=generate_password_hash(password))
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({"message": "User created successfully"}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    user = User.session.get(username)
+    if not user or not check_password_hash(user.password, password):
+        return jsonify({"error": "Invalid username or password"}), 401
+    login_user(user)
+    return jsonify({"message": "Logged in successfully"}), 200
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return jsonify({"message": "Logged out successfully"}), 200
+
 
 @app.route('/post')
 def post():
@@ -77,7 +151,9 @@ def post():
     return response.json()
     
 
-
+@app.route('/health_check')
+def health_check():
+    return jsonify({"message": "Healthy"}), 200
 
 
 if __name__ == '__main__':

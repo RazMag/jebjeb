@@ -3,3 +3,12 @@ venv/
 
 # ignore .env file
 .env
+
+# ignore .vscode folder
+.vscode/
+
+# ignore .idea folder
+.idea/
+
+# ignore the instance folder
+instance/

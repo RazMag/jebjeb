@@ -12,3 +12,6 @@ venv/
 
 # ignore the instance folder
 instance/
+
+# ingnore all pycache folders
+**/__pycache__/

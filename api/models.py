@@ -66,9 +66,9 @@ class Tweet(db.Model):
     data (str): The content of the tweet.
     """
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), db.ForeignKey('user.username'))
+    user_id = db.Column(db.String(80), db.ForeignKey('user.id'))
     datetime = db.Column(db.DateTime, nullable=False)
-    data = db.Column(db.String(280), nullable=False)
-    media = db.Column(db.String(1200), nullable=True)
+    text = db.Column(db.String(280), nullable=False)
+    media_url = db.Column(db.String(1200), nullable=True)
     super_follows = db.Column(db.Boolean, nullable=False)
     posted = db.Column(db.Boolean, nullable=False)

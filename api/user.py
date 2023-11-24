@@ -1,6 +1,5 @@
 import re
 from flask import Blueprint, jsonify, request
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required
 from api.models import User, db
 
@@ -24,9 +23,12 @@ def signup():
         return jsonify({"error": "Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, and one digit"}), 400
     if not username or not password:
         return jsonify({"error": "Missing username or password"}), 400
-    if User.session.get(username):
+    if User.query.get(username):
         return jsonify({"error": "User already exists"}), 400
-    user = User(id=username, password=generate_password_hash(password))
+    user = User(
+        username=username
+    )
+    user.set_password(password)
     db.session.add(user)
     db.session.commit()
     return jsonify({"message": "User created successfully"}), 201
@@ -43,8 +45,8 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    user = User.session.get(username)
-    if not user or not check_password_hash(user.password, password):
+    user = User.query.filter_by(username=username).first()
+    if not user or not user.check_password(password):
         return jsonify({"error": "Invalid username or password"}), 401
     login_user(user)
     return jsonify({"message": "Logged in successfully"}), 200

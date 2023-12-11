@@ -17,6 +17,9 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), index=True)
     email = db.Column(db.String(120), index=True, unique=True)
     password_hash = db.Column(db.String(128))
+    access_token = db.Column(db.String(128), nullable=True)
+    access_token_secret = db.Column(db.String(128), nullable=True)
+    twitter_login_state = db.Column(db.String(32), nullable=True)
 
     def set_password(self, password):
         """
@@ -41,7 +44,7 @@ class User(UserMixin, db.Model):
             bool: True if the password is correct, False otherwise.
         """
         return check_password_hash(self.password_hash, password)
-    
+
     def set_email(self, email):
         """
         Set the email address for the user.
@@ -53,6 +56,23 @@ class User(UserMixin, db.Model):
             None
         """
         self.email = email
+        db.session.commit()
+
+    def set_access_token_details(self, access_token, access_token_secret, complete_login=False):
+        """
+        Sets the access token details for a user.
+
+        Args:
+        access_token (str): The access token for the user.
+        access_token_secret (str): The secret key associated with the access token.
+
+        """
+        self.access_token = access_token
+        self.access_token_secret = access_token_secret
+        if complete_login:
+            self.twitter_login_state = "complete"
+        else:
+            self.twitter_login_state = "initiated"
         db.session.commit()
 
 class Tweet(db.Model):

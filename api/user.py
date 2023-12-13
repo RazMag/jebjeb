@@ -143,25 +143,29 @@ def complete_twitter_login():
         resource_owner_secret=current_user.access_token_secret,
         verifier=request.get_json().get('PIN'),
     )
-    oauth_tokens = oauth.fetch_access_token(access_token_url)
+    try:
+        oauth_tokens = oauth.fetch_access_token(access_token_url)
+    except ValueError:
+        return jsonify({"error": "Invalid PIN"}), 400
     access_token = oauth_tokens["oauth_token"]
     access_token_secret = oauth_tokens["oauth_token_secret"]
-    
     oauth = OAuth1Session(
         consumer_key,
         client_secret=consumer_secret,
         resource_owner_key=access_token,
         resource_owner_secret=access_token_secret,
     )
-    response = oauth.get("https://api.twitter.com/2/users/me")
+    try:
+        response = oauth.get("https://api.twitter.com/2/users/me")
+    except ValueError:
+        return jsonify({"error": "Error logging in"}), 400
     if response.status_code != 200:
-        return jsonify({"error": "Error logging in",
-                        "error_info": response.content}), 400
+        return jsonify({"error": "Error logging in"}), 400
     response = response.json()["data"]
     current_user.set_access_token_details(
-        access_token, 
-        access_token_secret,
-        True) #TODO: encrypt these
+        access_token = access_token,
+        access_token_secret = access_token_secret,
+        complete_login = True) #TODO: encrypt these
     return jsonify({"message": "Logged in successfully",
                     "name": response["name"],
                     "username": response["username"]}), 200
